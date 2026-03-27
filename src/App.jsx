@@ -383,10 +383,10 @@ export default function App() {
       
       {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col overflow-y-auto w-full">
-        <header className="flex items-center justify-between p-8 pb-4">
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 md:p-8 pb-4 gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Resumen General</h2>
               <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground border border-border/50">Privado</span>
             </div>
             <p className="text-muted-foreground capitalize">{format(targetDate, "MMMM 'de' yyyy", { locale: es })}</p>
@@ -411,20 +411,20 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-4">
               <Button variant="ghost" size="icon" className="rounded-full bg-muted/40" onClick={() => supabase.auth.signOut()} title="Cerrar sesión">
                 <Home className="h-4 w-4" /> {/* Reusing icon for logout shortcut or swap to LogOut if available in lucide-react */}
               </Button>
-              <Button onClick={() => setIsAddModalOpen(true)} className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-accent gap-2">
+              <Button onClick={() => setIsAddModalOpen(true)} className="flex-1 sm:flex-none rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-accent gap-2 px-6">
                 <Plus className="h-4 w-4" /> Añadir movimiento
               </Button>
             </div>
           </div>
         </header>
 
-        <div className="p-8 pt-4 space-y-8 flex-1">
+        <div className="p-4 md:p-8 pt-4 space-y-6 md:space-y-8 flex-1">
           {/* KPI ROW */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <Card gradient className="border-t-4 border-t-emerald-400 relative overflow-hidden">
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos del {period}</CardTitle>
@@ -496,11 +496,11 @@ export default function App() {
           {/* CHARTS ROW */}
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
             <Card gradient className="col-span-1 lg:col-span-3">
-              <CardHeader className="pb-0">
-                <CardTitle>Ingresos vs Gastos</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1 tracking-wide">Visión financiera global de los últimos 12 meses</p>
+              <CardHeader className="pb-0 p-4 md:p-6">
+                <CardTitle className="text-lg md:text-xl">Ingresos vs Gastos</CardTitle>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1 tracking-wide">Visión financiera global de los últimos 12 meses</p>
               </CardHeader>
-              <CardContent className="h-[350px] pt-6">
+              <CardContent className="h-[280px] md:h-[350px] pt-4 md:pt-6 p-2 md:p-6">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
@@ -531,11 +531,11 @@ export default function App() {
             </Card>
 
             <Card gradient className="col-span-1 lg:col-span-2">
-              <CardHeader className="pb-0">
-                <CardTitle>Gastos por Categoría</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Gasto total en {format(targetDate, "MMMM yyyy", { locale: es })}</p>
+              <CardHeader className="pb-0 p-4 md:p-6">
+                <CardTitle className="text-lg md:text-xl">Gastos por Categoría</CardTitle>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1">Gasto total en {format(targetDate, "MMMM yyyy", { locale: es })}</p>
               </CardHeader>
-              <CardContent className="h-[350px] pt-6 relative">
+              <CardContent className="h-[280px] md:h-[350px] pt-4 md:pt-6 relative p-2 md:p-6">
                 {categoryData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -604,8 +604,8 @@ export default function App() {
                 </select>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border border-border/50 overflow-hidden">
+            <CardContent className="p-4 md:p-6">
+              <div className="rounded-md border border-border/50 overflow-x-auto">
                 <table className="w-full text-sm text-left text-muted-foreground">
                   <thead className="text-xs uppercase bg-muted/20 text-foreground">
                     <tr>
