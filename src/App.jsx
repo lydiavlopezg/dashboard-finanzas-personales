@@ -22,7 +22,11 @@ function cn(...inputs) {
 const CATEGORIAS_GASTO = ["Restaurantes", "Ropa", "Viajes", "Coche", "Inversión", "Ocio", "Suscripciones", "Otros"];
 const CATEGORIAS_INGRESO = ["Nómina", "Bonus", "Venta", "Otros Ingresos"];
 
-export const BASE_SAVINGS = 24824.89;
+// Solo tú (lydiavlopezg) empiezas con este balance inicial. El resto empezará en 0.
+const getUserBaseSavings = (email) => {
+  if (email === 'lydiavlopezg@hotmail.com') return 24824.89;
+  return 0;
+};
 
 // --- PRE-BUILT UI COMPONENTS ---
 const Card = ({ className, gradient, ...props }) => (
@@ -69,6 +73,8 @@ const Input = ({ className, type, ...props }) => (
 );
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authForm, setAuthForm] = useState({ email: '', password: '', isLogin: true });
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("mes"); // mes, trimestre, año
@@ -78,7 +84,7 @@ export default function App() {
   // Table state
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Todas");
-  const [tableMonthFilter, setTableMonthFilter] = useState(""); // empty means no month filter
+  const [tableMonthFilter, setTableMonthFilter] = useState(""); 
   const [visibleCount, setVisibleCount] = useState(15);
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
@@ -92,11 +98,24 @@ export default function App() {
   });
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
     async function fetchTxs() {
-      if (!import.meta.env.VITE_SUPABASE_URL) {
+      if (!session) {
         setLoading(false);
         return;
       }
+      
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
@@ -104,13 +123,36 @@ export default function App() {
         
       if (!error && data) {
         setTransactions(data.map(t => ({...t, amount: parseFloat(t.amount)})));
-      } else {
+      } else if (error && error.code !== 'PGRST116') {
         console.error("Supabase Error:", error);
       }
       setLoading(false);
     }
     fetchTxs();
-  }, []);
+  }, [session]);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    let error;
+    if (authForm.isLogin) {
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: authForm.email,
+        password: authForm.password,
+      });
+      error = err;
+    } else {
+      const { error: err } = await supabase.auth.signUp({
+        email: authForm.email,
+        password: authForm.password,
+      });
+      error = err;
+    }
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+    }
+  };
 
   // Calculate metrics based on period
   const filterByPeriod = (txs, targetDate, prd) => {
@@ -275,10 +317,63 @@ export default function App() {
     setAddForm({ ...addForm, concept: '', amount: '' }); // reset some fields
   };
 
-  if (loading) {
+  if (loading && !session) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background p-4 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
+        <Card className="w-full max-w-md border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl p-8 border">
+          <div className="text-center space-y-2 mb-8">
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+              <Briefcase className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold tracking-tighter">Acceso al Dashboard</CardTitle>
+            <p className="text-sm text-muted-foreground">Introduce tus credenciales para continuar</p>
+          </div>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input 
+                type="email" 
+                required 
+                placeholder="tu@email.com"
+                value={authForm.email}
+                onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Contraseña</label>
+              <Input 
+                type="password" 
+                required 
+                placeholder="••••••••"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+              />
+            </div>
+            
+            <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 mt-2">
+              {authForm.isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+            </Button>
+            
+            <div className="text-center pt-4 border-t border-border/50 mt-6">
+              <button 
+                type="button"
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setAuthForm({...authForm, isLogin: !authForm.isLogin})}
+              >
+                {authForm.isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
+              </button>
+            </div>
+          </form>
+        </Card>
       </div>
     );
   }
@@ -290,7 +385,10 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-y-auto w-full">
         <header className="flex items-center justify-between p-8 pb-4">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-3xl font-bold tracking-tight">Resumen General</h2>
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground border border-border/50">Privado</span>
+            </div>
             <p className="text-muted-foreground capitalize">{format(targetDate, "MMMM 'de' yyyy", { locale: es })}</p>
           </div>
           <div className="flex items-center gap-4 flex-wrap justify-end">
@@ -314,8 +412,9 @@ export default function App() {
               ))}
             </div>
             <div className="flex items-center gap-3 ml-4">
-              <Button variant="ghost" size="icon" className="rounded-full bg-muted/40 hidden md:flex"><Search className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" className="rounded-full bg-muted/40 hidden md:flex"><Bell className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="rounded-full bg-muted/40" onClick={() => supabase.auth.signOut()} title="Cerrar sesión">
+                <Home className="h-4 w-4" /> {/* Reusing icon for logout shortcut or swap to LogOut if available in lucide-react */}
+              </Button>
               <Button onClick={() => setIsAddModalOpen(true)} className="rounded-full shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-accent gap-2">
                 <Plus className="h-4 w-4" /> Añadir movimiento
               </Button>
@@ -384,7 +483,7 @@ export default function App() {
                 <CardTitle className="text-sm font-medium text-purple-100">Ahorro Total Acumulado</CardTitle>
               </CardHeader>
               <CardContent className="relative z-10">
-                <div className="text-4xl font-black mt-1">{(BASE_SAVINGS + transactions.reduce((acc, tx) => acc + (tx.type === 'ingreso' ? tx.amount : -tx.amount), 0)).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2})} €</div>
+                <div className="text-4xl font-black mt-1">{(getUserBaseSavings(session?.user?.email) + transactions.reduce((acc, tx) => acc + (tx.type === 'ingreso' ? tx.amount : -tx.amount), 0)).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2})} €</div>
                 <p className="text-xs text-purple-200 mt-2 font-medium">Patrimonio actual</p>
                 <div className="absolute bottom-4 right-6 flex items-center gap-2 opacity-50">
                   <div className="h-6 w-6 rounded-full bg-white/40"></div>
