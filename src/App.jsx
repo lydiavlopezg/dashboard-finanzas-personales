@@ -22,11 +22,7 @@ function cn(...inputs) {
 const CATEGORIAS_GASTO = ["Restaurantes", "Ropa", "Viajes", "Coche", "Inversión", "Ocio", "Suscripciones", "Otros"];
 const CATEGORIAS_INGRESO = ["Nómina", "Bonus", "Venta", "Otros Ingresos"];
 
-// Solo tú (lydiavlopezg) empiezas con este balance inicial. El resto empezará en 0.
-const getUserBaseSavings = (email) => {
-  if (email === 'lydiavlopezg@hotmail.com') return 24824.89;
-  return 0;
-};
+// Las categorías y datos estáticos se mantienen igual
 
 // --- PRE-BUILT UI COMPONENTS ---
 const Card = ({ className, gradient, ...props }) => (
@@ -80,6 +76,9 @@ export default function App() {
   const [period, setPeriod] = useState("mes"); // mes, trimestre, año
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [targetDateStr, setTargetDateStr] = useState(format(new Date(), 'yyyy-MM'));
+  const [baseSavings, setBaseSavings] = useState(0);
+  const [isBaseSavingsModalOpen, setIsBaseSavingsModalOpen] = useState(false);
+  const [tempBaseSavings, setTempBaseSavings] = useState("");
   
   // Table state
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,10 +125,49 @@ export default function App() {
       } else if (error && error.code !== 'PGRST116') {
         console.error("Supabase Error:", error);
       }
+    }
+
+    async function fetchProfile() {
+      if (!session) return;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('base_savings')
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // New user or no profile: show popup
+          const initial = session.user.email === 'lydiavlopezg@hotmail.com' ? 24824.89 : 0;
+          setBaseSavings(initial);
+          setTempBaseSavings(initial.toString());
+          setIsBaseSavingsModalOpen(true);
+        } else {
+          console.error("Error fetching profile:", error);
+        }
+      } else {
+        setBaseSavings(parseFloat(data.base_savings));
+      }
       setLoading(false);
     }
+
     fetchTxs();
+    fetchProfile();
   }, [session]);
+
+  const handleSaveBaseSavings = async (e) => {
+    e.preventDefault();
+    const numVal = parseFloat(tempBaseSavings) || 0;
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ user_id: session.user.id, base_savings: numVal }, { onConflict: 'user_id' });
+    
+    if (!error) {
+      setBaseSavings(numVal);
+      setIsBaseSavingsModalOpen(false);
+    } else {
+      alert("Error al guardar: " + error.message);
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -477,13 +515,23 @@ export default function App() {
               </CardContent>
             </Card>
 
-            <Card className="balance-card-gradient text-white border-none shadow-xl shadow-purple-900/20 relative overflow-hidden">
+            <Card 
+              gradient 
+              className="balance-card-gradient text-white border-none shadow-xl shadow-purple-900/20 relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform group"
+              onClick={() => {
+                setTempBaseSavings(baseSavings.toString());
+                setIsBaseSavingsModalOpen(true);
+              }}
+            >
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 relative z-10">
-                <CardTitle className="text-sm font-medium text-purple-100">Ahorro Total Acumulado</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-100 flex items-center gap-2">
+                  Ahorro Total Acumulado
+                  <SlidersHorizontal className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                </CardTitle>
               </CardHeader>
               <CardContent className="relative z-10">
-                <div className="text-4xl font-black mt-1">{(getUserBaseSavings(session?.user?.email) + transactions.reduce((acc, tx) => acc + (tx.type === 'ingreso' ? tx.amount : -tx.amount), 0)).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2})} €</div>
+                <div className="text-4xl font-black mt-1">{(baseSavings + transactions.reduce((acc, tx) => acc + (tx.type === 'ingreso' ? tx.amount : -tx.amount), 0)).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2})} €</div>
                 <p className="text-xs text-purple-200 mt-2 font-medium">Patrimonio actual</p>
                 <div className="absolute bottom-4 right-6 flex items-center gap-2 opacity-50">
                   <div className="h-6 w-6 rounded-full bg-white/40"></div>
@@ -740,6 +788,44 @@ export default function App() {
                   <Button type="button" variant="ghost" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
                   <Button type="submit">Guardar Movimiento</Button>
                 </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* BASE SAVINGS MODAL */}
+      {isBaseSavingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <Card className="w-full max-w-sm shadow-2xl border-primary/20 bg-card/95 animate-in zoom-in-95 duration-300">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-2">
+                <Briefcase className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle className="text-xl">Configura tu Ahorro</CardTitle>
+              <p className="text-sm text-muted-foreground">Introduce tu balance actual acumulado antes de usar el dashboard</p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveBaseSavings} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ahorro total actual (€)</label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="0.00"
+                      className="text-2xl h-14 font-bold text-center pl-8 text-primary"
+                      value={tempBaseSavings}
+                      onChange={(e) => setTempBaseSavings(e.target.value)}
+                      autoFocus
+                    />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold opacity-50 text-primary">€</span>
+                  </div>
+                  <p className="text-[10px] text-center text-muted-foreground uppercase tracking-wider mt-2">Puedes cambiar esto en cualquier momento pulsando la tarjeta de balance</p>
+                </div>
+                
+                <Button type="submit" className="w-full h-12 text-lg font-bold shadow-lg shadow-primary/20">
+                  Empezar a gestionar
+                </Button>
               </form>
             </CardContent>
           </Card>
