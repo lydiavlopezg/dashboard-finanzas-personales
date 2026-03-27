@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --background: hsl(240, 20%, 9%);
+    --foreground: hsl(0, 0%, 98%);
+
+    --card: hsl(240, 15%, 14%);
+    --card-foreground: hsl(0, 0%, 98%);
+
+    --popover: hsl(240, 15%, 14%);
+    --popover-foreground: hsl(0, 0%, 98%);
+
+    --primary: hsl(340, 82%, 65%);
+    --primary-foreground: hsl(0, 0%, 98%);
+
+    --secondary: hsl(230, 60%, 65%);
+    --secondary-foreground: hsl(0, 0%, 98%);
+
+    --muted: hsl(240, 15%, 20%);
+    --muted-foreground: hsl(240, 5%, 65%);
+
+    --accent: hsl(250, 82%, 65%);
+    --accent-foreground: hsl(0, 0%, 98%);
+
+    --destructive: hsl(0, 62.8%, 50%);
+    --destructive-foreground: hsl(0, 0%, 98%);
+
+    --border: hsl(240, 10%, 22%);
+    --input: hsl(240, 10%, 22%);
+    --ring: hsl(340, 82%, 65%);
+
+    --radius: 1.2rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased font-sans;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.card-gradient {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%), var(--card);
+}
+.balance-card-gradient {
+  background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+}
